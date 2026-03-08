@@ -186,12 +186,16 @@ const YTSSearch = (props: SearchProviderComponentProps) => {
               return (
                 <TorrentDownloadBox
                   key={torrent.hash}
-                  magnetURL={createYTSMagnetLink(
-                    torrent.hash,
-                    `${selectedMovie?.title} (${
-                      selectedMovie?.year || "--"
-                    })` || "Title not found"
-                  )}
+                  magnetURL={
+                    torrent.url?.startsWith("magnet:?")
+                      ? torrent.url
+                      : createYTSMagnetLink(
+                          torrent.hash,
+                          `${selectedMovie?.title} (${
+                            selectedMovie?.year || "--"
+                          })` || "Title not found"
+                        )
+                  }
                   category={addToCategory}
                 >
                   <Flex flexDirection={"column"} width={"100%"}>

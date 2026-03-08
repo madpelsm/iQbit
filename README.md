@@ -54,6 +54,30 @@ WebUI in its different port for desktop clients.**
 
 [Documentation](/server/README.md)
 
+## Static Theme Mode (qBittorrent release folder)
+
+If you use iQbit as a pure qBittorrent theme (pointing qBittorrent to the `release` folder), there is no Node backend, so direct YTS mirror requests can hit browser CORS limits.
+
+To make YTS search work in this mode, configure a proxy template in:
+
+- `release/public/runtime-config.js`
+
+Set `ytsProxyTemplate` to your own proxy endpoint and include `{url}` where the encoded YTS URL should be injected. Example:
+
+```js
+window.iQbitConfig = {
+  ytsProxyTemplate: "https://your-private-domain.example/yts-proxy?url={url}",
+};
+```
+
+Current behavior in static theme mode:
+
+- iQbit tries local `/yts` first (if available)
+- falls back to configured/public proxy templates
+- if those fail, it falls back to qBittorrent's search API (`/api/v2/search`) to avoid browser CORS failures entirely
+
+If you run iQbit using the standalone server, this extra config is usually not needed because iQbit serves a built-in same-origin `/yts` proxy route.
+
 ## RoadMap
 
 I intend to keep supporting this project for the foreseeable future at least until I run out of things that I would like

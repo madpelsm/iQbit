@@ -12,6 +12,11 @@ export default defineConfig(({mode})=>{
     server:{
       port:3000,
       proxy:{
+        "/yts":{
+          target: env.VITE_YTS_PROXY || "https://yts.mx",
+          changeOrigin: true,
+          secure: false,
+        },
         "/api":{
           target: env.VITE_PROXY,
           changeOrigin: true,
