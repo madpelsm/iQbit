@@ -11,6 +11,7 @@ import Filters from "../components/Filters";
 import ReactGA from "react-ga";
 import CategorySelect from "../components/CategorySelect";
 import { TorrClient } from "../utils/TorrClient";
+import { isRelevantSearchResult } from "../utils/searchRelevance";
 
 export type AliasList = { name: string; aliases?: string[] }[];
 
@@ -185,12 +186,16 @@ const TPBSearch = (props: SearchProviderComponentProps) => {
         } else {
           return true;
         }
+      })
+      .filter((Torr) => {
+        return isRelevantSearchResult(props.searchState[0], Torr.name || "");
       });
   }, [
     data,
     props.filterState.selectedSource,
     props.filterState.minSeeds,
     props.filterState.qualitySelected,
+    props.searchState[0],
   ]);
 
   const [addToCategory, setAddToCategory] = useState<string>("");

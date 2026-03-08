@@ -19,6 +19,7 @@ import { useIsLargeScreen } from "../utils/screenSize";
 import { StatWithIcon } from "../components/StatWithIcon";
 import { parseFromString, qualityAliases, typeAliases } from "./tpb";
 import Filters from "../components/Filters";
+import { isRelevantSearchResult } from "../utils/searchRelevance";
 
 const PluginSearch = (props: SearchProviderComponentProps) => {
   const [searchId, setSearchId] = useState<number>();
@@ -94,12 +95,16 @@ const PluginSearch = (props: SearchProviderComponentProps) => {
         } else {
           return true;
         }
+      })
+      .filter((Torr) => {
+        return isRelevantSearchResult(props.searchState[0], Torr.fileName || "");
       });
   }, [
     data,
     props.filterState.selectedSource,
     props.filterState.minSeeds,
     props.filterState.qualitySelected,
+    props.searchState[0],
   ]);
 
   return (

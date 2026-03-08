@@ -245,7 +245,7 @@ export const TorrClient = {
   createSearch: async (query: string): Promise<{ id: number }> => {
     const { data } = await APICall.post(
       "search/start",
-      `pattern=${query}&plugins=enabled&category=all`
+      `pattern=${encodeURIComponent(query)}&plugins=enabled&category=all`
     );
     return data;
   },
