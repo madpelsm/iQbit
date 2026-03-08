@@ -5,6 +5,7 @@ import {
   Flex,
   Heading,
   LightMode,
+  Input,
   Wrap,
   Text,
   Tag,
@@ -44,10 +45,20 @@ const TorrentDownloadBox = ({
 
   const [sonarrUrl] = useLocalStorage("iqbit-sonarr-url", "");
   const [radarrUrl] = useLocalStorage("iqbit-radarr-url", "");
+  const [quickSavePath, setQuickSavePath] = useLocalStorage(
+    "iqbit-search-save-path",
+    ""
+  );
 
   const { mutate, isLoading, isSuccess } = useMutation(
     "addBox",
-    (magnetURLParam: string) => TorrClient.addTorrent("urls", magnetURLParam, category)
+    (params: { magnetURLParam: string; savePath?: string }) =>
+      TorrClient.addTorrent(
+        "urls",
+        params.magnetURLParam,
+        category,
+        params.savePath || ""
+      )
   );
 
   const { mutate: mutateSonarr, isLoading: isSonarrLoading, isSuccess: isSonarrSuccess } = useMutation(
@@ -68,7 +79,11 @@ const TorrentDownloadBox = ({
     onSuccess: ([magnetUrlResult, target]) => {
       if (target === "sonarr") mutateSonarr(magnetUrlResult);
       else if (target === "radarr") mutateRadarr(magnetUrlResult);
-      else mutate(magnetUrlResult);
+      else
+        mutate({
+          magnetURLParam: magnetUrlResult,
+          savePath: quickSavePath.trim(),
+        });
     },
   });
 
@@ -108,6 +123,17 @@ const TorrentDownloadBox = ({
             {filenameHint}
           </Text>
         )}
+        <Box mb={2}>
+          <Text fontSize={"xs"} color={"gray.500"} mb={1}>
+            Save Path (optional)
+          </Text>
+          <Input
+            size={"sm"}
+            value={quickSavePath}
+            placeholder={"Leave empty for default path"}
+            onChange={(e) => setQuickSavePath(e.target.value)}
+          />
+        </Box>
         {children}
       </Box>
       <LightMode>
@@ -120,7 +146,11 @@ const TorrentDownloadBox = ({
               colorScheme={"blue"}
               width={"100%"}
               onClick={() => {
-                if (magnetURL) mutate(magnetURL);
+                if (magnetURL)
+                  mutate({
+                    magnetURLParam: magnetURL,
+                    savePath: quickSavePath.trim(),
+                  });
                 else if (onSelect) callbackMutation("qbit");
               }}
               leftIcon={anySuccess ? <IoCheckmark /> : undefined}
