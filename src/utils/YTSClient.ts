@@ -12,12 +12,6 @@ if (serverAddress.substring(serverAddress.length - 1) !== "/") {
 // Prefer same-origin proxy endpoints to avoid browser CORS failures.
 const PROXY_BASE_URLS = [`${serverAddress}yts/api/v2/`, `${serverAddress}yts/`];
 
-// Public proxy templates for static theme mode where no backend proxy exists.
-const DEFAULT_CORS_PROXY_TEMPLATES = [
-  "https://corsproxy.io/?{url}",
-  "https://api.allorigins.win/raw?url={url}",
-];
-
 // Fallback list of YTS mirrors used if the remote config cannot be fetched.
 const FALLBACK_MIRRORS = [
   "https://yts.mx/api/v2/",
@@ -38,6 +32,7 @@ const CACHE_KEY = "iqbit-yts-working-mirror";
 type IQbitRuntimeConfig = {
   ytsProxyTemplate?: string;
   ytsProxyTemplates?: string[];
+  ytsUseLocalProxy?: boolean;
 };
 
 function getRuntimeConfig(): IQbitRuntimeConfig {
@@ -46,14 +41,12 @@ function getRuntimeConfig(): IQbitRuntimeConfig {
 
 function getProxyTemplates(): string[] {
   const runtimeConfig = getRuntimeConfig();
-  const configured = [
+  return [
     ...(runtimeConfig.ytsProxyTemplates || []),
     runtimeConfig.ytsProxyTemplate || "",
   ]
     .map((item) => item.trim())
     .filter(Boolean);
-
-  return [...configured, ...DEFAULT_CORS_PROXY_TEMPLATES];
 }
 
 function buildProxyURL(template: string, targetURL: string): string {
@@ -306,6 +299,10 @@ export const YTSClient = {
     order_by,
   }: ytsSearchParams): Promise<YTSData> => {
     let lastError: any;
+    const runtimeConfig = getRuntimeConfig();
+    const shouldTryLocalProxy =
+      runtimeConfig.ytsUseLocalProxy === true ||
+      window.location.port === "8081";
     const searchParams = {
       limit,
       page,
@@ -319,20 +316,22 @@ export const YTSClient = {
     };
     const queryString = buildQueryString(searchParams);
 
-    for (const baseURL of PROXY_BASE_URLS) {
-      try {
-        const { data } = await axios.get(`${baseURL}list_movies.json`, {
-          params: searchParams,
-          timeout: 5000,
-        });
+    if (shouldTryLocalProxy) {
+      for (const baseURL of PROXY_BASE_URLS) {
+        try {
+          const { data } = await axios.get(`${baseURL}list_movies.json`, {
+            params: searchParams,
+            timeout: 5000,
+          });
 
-        const movieData = extractMovieData(data);
-        if (movieData) {
-          return movieData;
+          const movieData = extractMovieData(data);
+          if (movieData) {
+            return movieData;
+          }
+        } catch (error) {
+          // Non-fatal: this endpoint may not exist when not using standalone server.
+          lastError = error;
         }
-      } catch (error) {
-        // Non-fatal: this endpoint may not exist when not using standalone server.
-        lastError = error;
       }
     }
 

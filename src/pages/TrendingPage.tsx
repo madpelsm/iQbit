@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
+  AspectRatio,
   Box,
   Button,
   Flex,
