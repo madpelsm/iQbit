@@ -2,7 +2,6 @@ import { SearchProviderComponentProps, TPBRecord } from "../types";
 import { Flex, VStack } from "@chakra-ui/react";
 import IosSearch from "../components/ios/IosSearch";
 import { useMutation } from "react-query";
-import axios from "axios";
 import TorrentDownloadBox from "../components/TorrentDownloadBox";
 import { SectionSM, useSearchFromParams } from "./yts";
 import SeedsAndPeers from "../components/SeedsAndPeers";
@@ -11,6 +10,7 @@ import TorrentMovieData from "../components/TorrentMovieData";
 import Filters from "../components/Filters";
 import ReactGA from "react-ga";
 import CategorySelect from "../components/CategorySelect";
+import { TorrClient } from "../utils/TorrClient";
 
 export type AliasList = { name: string; aliases?: string[] }[];
 
@@ -74,6 +74,54 @@ const ApiDomain =
     ? devURL
     : "https://iqbit.app/";
 
+async function wait(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function searchViaQbitPlugins(query: string): Promise<TPBRecord[]> {
+  const started = await TorrClient.createSearch(query);
+  const id = started.id;
+
+  try {
+    let response = await TorrClient.getResults(id);
+    let attempts = 0;
+
+    while (response.status === "Running" && attempts < 8) {
+      attempts += 1;
+      await wait(700);
+      response = await TorrClient.getResults(id);
+    }
+
+    return (response.results || []).map((result, index) => {
+      return {
+        added: "",
+        category: "",
+        id: `${id}-${index}`,
+        imdb: "",
+        info_hash: result.fileUrl || "",
+        leechers: (result.nbLeechers || 0).toString(),
+        name: result.fileName || "Unknown",
+        num_files: "1",
+        seeders: (result.nbSeeders || 0).toString(),
+        size: (result.fileSize || 0).toString(),
+        status: "active",
+        username: "",
+      };
+    });
+  } finally {
+    try {
+      await TorrClient.stopSearch(id);
+    } catch {
+      // ignore cleanup error
+    }
+    try {
+      await TorrClient.deleteSearch(id);
+    } catch {
+      // ignore cleanup error
+    }
+  }
+}
+
 const TPBSearch = (props: SearchProviderComponentProps) => {
   const {
     mutate: search,
@@ -83,16 +131,8 @@ const TPBSearch = (props: SearchProviderComponentProps) => {
   } = useMutation(
     "tpbSearch",
     async () => {
-      const { data } = await axios.get<TPBRecord[]>(
-        `https://apibay.org/q.php`,
-        {
-          params: {
-            q: props.searchState[0],
-            cat: props.category === 'Video' ? 200 : (props.category === 'Audio' ? 100 : 0)
-          },
-        }
-      );
-      return data;
+      // Use qBittorrent plugin search API to avoid browser CORS failures.
+      return await searchViaQbitPlugins(props.searchState[0]);
     },
     {
       onMutate: () =>
