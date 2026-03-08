@@ -6,12 +6,12 @@ import {
   Button,
   Flex,
   Heading,
-  HeadingProps,
   Text,
   useBoolean,
   useDisclosure,
   VStack,
 } from "@chakra-ui/react";
+import type { HeadingProps } from "@chakra-ui/react";
 import IosSearch from "../components/ios/IosSearch";
 import {useMutation, useQuery} from "react-query";
 import { YTSClient } from "../utils/YTSClient";
@@ -183,9 +183,13 @@ const YTSSearch = (props: SearchProviderComponentProps) => {
             }
           >
             {(selectedMovie?.torrents || []).map((torrent) => {
+              const torrentNameHint = `${selectedMovie?.title || "Unknown"} ${
+                selectedMovie?.year ? `(${selectedMovie.year})` : ""
+              } ${torrent.quality || ""} ${torrent.type || ""}`.trim();
               return (
                 <TorrentDownloadBox
                   key={torrent.hash}
+                  filenameHint={torrentNameHint}
                   magnetURL={
                     torrent.url?.startsWith("magnet:?")
                       ? torrent.url

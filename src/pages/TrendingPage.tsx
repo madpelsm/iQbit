@@ -14,6 +14,7 @@ import { useMutation, useQuery } from "react-query";
 import { tmdbClient } from "../utils/tmdbClient";
 import PosterGrid from "../components/PosterGrid";
 import { MovieResult, TvResult } from "moviedb-promise";
+import axios from "axios";
 import SegmentedPicker from "../components/SegmentedPicker";
 import IosBottomSheet from "../components/ios/IosBottomSheet";
 import { createYTSMagnetLink, SectionSM } from "../searchAPIs/yts";
@@ -28,6 +29,7 @@ import { TorrClient } from "../utils/TorrClient";
 
 const smallImage = "http://image.tmdb.org/t/p/w200";
 const originalImage = "http://image.tmdb.org/t/p/original";
+const tmdbApiKey = "d966082b253dac6e818d70084d7222cd";
 
 // Helper to get browser language, fallback to 'en-US', and map to supported TMDB codes
 const getBrowserLanguage = () => {
@@ -43,6 +45,8 @@ const TrendingPage = () => {
   const [tab, setTab] = useState(0);
 
   const [selectedMovie, setSelectedMovie] = useState<MovieResult>();
+  const [movieTrailerURL, setMovieTrailerURL] = useState<string>("");
+  const [tvTrailerURL, setTVTrailerURL] = useState<string>("");
   const movieBottomSheet = useDisclosure();
   const browserLanguage = getBrowserLanguage();
   const { data: trendingMovies } = useQuery("getTrendingMovies", async () =>
@@ -110,6 +114,36 @@ const TrendingPage = () => {
       );
   }, [plugins?.length]);
 
+  const fetchTmdbTrailer = async (mediaType: "movie" | "tv", id?: number) => {
+    if (!id) return "";
+    try {
+      const { data } = await axios.get(
+        `https://api.themoviedb.org/3/${mediaType}/${id}/videos`,
+        {
+          params: { api_key: tmdbApiKey, language: browserLanguage },
+        }
+      );
+      const results = data?.results || [];
+      const preferred =
+        results.find(
+          (item: any) =>
+            item?.site === "YouTube" &&
+            item?.type === "Trailer" &&
+            item?.official
+        ) ||
+        results.find(
+          (item: any) =>
+            item?.site === "YouTube" && item?.type === "Trailer"
+        ) ||
+        results.find((item: any) => item?.site === "YouTube");
+
+      if (!preferred?.key) return "";
+      return `https://www.youtube.com/embed/${preferred.key}`;
+    } catch {
+      return "";
+    }
+  };
+
   return (
     <>
       <PageHeader title={"Trending"} />
@@ -141,6 +175,8 @@ const TrendingPage = () => {
             );
             movieBottomSheet.onOpen();
             setSelectedMovie(movie);
+            setMovieTrailerURL("");
+            fetchTmdbTrailer("movie", movie?.id).then(setMovieTrailerURL);
           }}
         />
       ) : tab === 1 ? (
@@ -157,6 +193,8 @@ const TrendingPage = () => {
           onSelect={(show) => {
             setSelectedTv(show);
             tvBottomSheet.onOpen();
+              setTVTrailerURL("");
+              fetchTmdbTrailer("tv", show?.id).then(setTVTrailerURL);
           }}
         />
       ) : tab === 2 ? (
@@ -179,6 +217,8 @@ const TrendingPage = () => {
               );
               movieBottomSheet.onOpen();
               setSelectedMovie(movie);
+              setMovieTrailerURL("");
+              fetchTmdbTrailer("movie", movie?.id).then(setMovieTrailerURL);
             }}
           />
           <Button
@@ -256,9 +296,15 @@ const TrendingPage = () => {
             )}
 
             {(TorrData?.movies?.[0].torrents || []).map((torrent) => {
+              const torrentNameHint = `${TorrData?.movies?.[0]?.title || "Unknown"} ${
+                TorrData?.movies?.[0]?.year
+                  ? `(${TorrData.movies[0].year})`
+                  : ""
+              } ${torrent.quality || ""} ${torrent.type || ""}`.trim();
               return (
                 <TorrentDownloadBox
                   key={torrent.hash}
+                  filenameHint={torrentNameHint}
                   magnetURL={createYTSMagnetLink(
                     torrent.hash,
                     `${TorrData?.movies[0].title} (${
@@ -284,6 +330,24 @@ const TrendingPage = () => {
           <SectionSM title={"Description"}>
             <Text>{selectedMovie?.overview}</Text>
           </SectionSM>
+          {movieTrailerURL && (
+            <SectionSM title={"Trailer"}>
+              <AspectRatio ratio={16 / 9} width={"100%"}>
+                <iframe
+                  width={"100%"}
+                  height={"100%"}
+                  className={"movieTrailer"}
+                  title={"Movie Trailer"}
+                  src={movieTrailerURL}
+                  allow={
+                    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  }
+                  allowFullScreen
+                  referrerPolicy={"strict-origin-when-cross-origin"}
+                />
+              </AspectRatio>
+            </SectionSM>
+          )}
         </Flex>
       </IosBottomSheet>
 
@@ -336,6 +400,24 @@ const TrendingPage = () => {
           <SectionSM title={"Description"}>
             <Text>{selectedTv?.overview}</Text>
           </SectionSM>
+          {tvTrailerURL && (
+            <SectionSM title={"Trailer"}>
+              <AspectRatio ratio={16 / 9} width={"100%"}>
+                <iframe
+                  width={"100%"}
+                  height={"100%"}
+                  className={"movieTrailer"}
+                  title={"Series Trailer"}
+                  src={tvTrailerURL}
+                  allow={
+                    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  }
+                  allowFullScreen
+                  referrerPolicy={"strict-origin-when-cross-origin"}
+                />
+              </AspectRatio>
+            </SectionSM>
+          )}
         </Flex>
       </IosBottomSheet>
     </>

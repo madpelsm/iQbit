@@ -5,6 +5,9 @@ import {
   Flex,
   Heading,
   LightMode,
+  Wrap,
+  Text,
+  Tag,
   useColorModeValue,
   Menu,
   MenuButton,
@@ -18,9 +21,11 @@ import { TorrClient } from "../utils/TorrClient";
 import { IoCheckmark, IoChevronDown, IoTv, IoFilm } from "react-icons/io5";
 import { useLocalStorage } from "usehooks-ts";
 import { pushToServarr } from "../utils/ServarrClient";
+import { extractReleaseMarkers } from "../utils/releaseMarkers";
 
 export interface TorrentDownloadBoxProps {
   title?: string;
+  filenameHint?: string;
   magnetURL?: string;
   onSelect?: () => Promise<string>;
   category?: string;
@@ -29,11 +34,13 @@ export interface TorrentDownloadBoxProps {
 const TorrentDownloadBox = ({
   magnetURL,
   title,
+  filenameHint,
   onSelect,
   children,
   category,
 }: PropsWithChildren<TorrentDownloadBoxProps>) => {
   const isLarge = useIsLargeScreen();
+  const markers = extractReleaseMarkers(`${title || ""} ${filenameHint || ""}`);
 
   const [sonarrUrl] = useLocalStorage("iqbit-sonarr-url", "");
   const [radarrUrl] = useLocalStorage("iqbit-radarr-url", "");
@@ -86,6 +93,20 @@ const TorrentDownloadBox = ({
           <Heading wordBreak={"break-all"} size={"md"} mb={2}>
             {title}
           </Heading>
+        )}
+        {markers.length > 0 && (
+          <Wrap spacing={2} mb={2}>
+            {markers.map((marker) => (
+              <Tag key={marker} size={"sm"} colorScheme={"blue"} variant={"subtle"}>
+                {marker}
+              </Tag>
+            ))}
+          </Wrap>
+        )}
+        {filenameHint && (
+          <Text fontSize={"xs"} color={"gray.500"} mb={2} wordBreak={"break-all"}>
+            {filenameHint}
+          </Text>
         )}
         {children}
       </Box>
