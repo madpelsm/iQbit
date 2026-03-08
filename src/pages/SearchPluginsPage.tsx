@@ -14,8 +14,8 @@ import {
   Text,
   useColorModeValue,
   useDisclosure,
-  UseDisclosureReturn,
 } from "@chakra-ui/react";
+import type { UseDisclosureReturn } from "@chakra-ui/react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { TorrClient } from "../utils/TorrClient";
 import { useIsLargeScreen } from "../utils/screenSize";

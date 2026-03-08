@@ -10,8 +10,8 @@ import {
   Text,
   useColorModeValue,
   useDisclosure,
-  UseDisclosureReturn,
 } from "@chakra-ui/react";
+import type { UseDisclosureReturn } from "@chakra-ui/react";
 import { IoClose, IoFilter } from "react-icons/io5";
 import { smartMap } from "../utils/smartMap";
 import { Input } from "@chakra-ui/input";

@@ -4,13 +4,13 @@ import TPBSearch from "../searchAPIs/tpb";
 import {
   Box,
   Button,
-  ButtonProps,
   Flex,
   Heading,
   LightMode,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
+import type { ButtonProps } from "@chakra-ui/react";
 import YTSSearch from "../searchAPIs/yts";
 import { useLocation } from "react-router-dom";
 import { useFilterState } from "../components/Filters";

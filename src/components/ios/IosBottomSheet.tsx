@@ -16,10 +16,9 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  ModalProps,
   useColorModeValue,
-  UseDisclosureReturn,
 } from "@chakra-ui/react";
+import type { ModalProps, UseDisclosureReturn } from "@chakra-ui/react";
 import { GlassContainer } from "../GlassContainer";
 
 export interface IosBottomSheetProps {

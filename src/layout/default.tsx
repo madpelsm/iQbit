@@ -9,7 +9,7 @@ import {
   useTheme,
 } from "@chakra-ui/react";
 import NavButton from "../components/buttons/NavButton";
-import { IconBaseProps } from "react-icons";
+import type { IconBaseProps } from "react-icons";
 import { useIsLargeScreen } from "../utils/screenSize";
 import { PageLabels, Pages } from "../Pages";
 import Home from "../pages/Home";

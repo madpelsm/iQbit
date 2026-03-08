@@ -13,7 +13,7 @@ import PageHeader from "../components/PageHeader";
 import { useMutation, useQuery } from "react-query";
 import { tmdbClient } from "../utils/tmdbClient";
 import PosterGrid from "../components/PosterGrid";
-import { MovieResult, TvResult } from "moviedb-promise";
+import type { MovieResult, TvResult } from "moviedb-promise";
 import axios from "axios";
 import SegmentedPicker from "../components/SegmentedPicker";
 import IosBottomSheet from "../components/ios/IosBottomSheet";
