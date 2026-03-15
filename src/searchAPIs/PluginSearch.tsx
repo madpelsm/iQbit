@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SearchProviderComponentProps } from "../types";
 import IosSearch from "../components/ios/IosSearch";
 import {
@@ -23,6 +23,7 @@ import { isRelevantSearchResult } from "../utils/searchRelevance";
 
 const PluginSearch = (props: SearchProviderComponentProps) => {
   const [searchId, setSearchId] = useState<number>();
+  const activeSearchRef = useRef<number>();
 
   const isLarge = useIsLargeScreen();
 
@@ -31,29 +32,28 @@ const PluginSearch = (props: SearchProviderComponentProps) => {
     "blackAlpha.500"
   );
 
-  const { mutate: createSearch, isLoading: createLoading } = useMutation(
+  const cleanupSearch = async (id?: number) => {
+    if (!id) return;
+    try {
+      await TorrClient.stopSearch(id);
+    } catch {
+      // Ignore cleanup failures
+    }
+    try {
+      await TorrClient.deleteSearch(id);
+    } catch {
+      // Ignore cleanup failures
+    }
+  };
+
+  const { mutateAsync: createSearch, isLoading: createLoading } = useMutation(
     "createSearch",
     (query: string) => TorrClient.createSearch(query),
     {
       onSuccess: (res) => {
         setSearchId(res.id);
+        activeSearchRef.current = res.id;
       },
-    }
-  );
-
-  const { mutate: deleteSearch } = useMutation(
-    "deleteSearch",
-    () => TorrClient.deleteSearch(searchId!),
-    {
-      onSuccess: () => setSearchId(undefined),
-    }
-  );
-
-  const { mutate: stopSearch } = useMutation(
-    "stopSearch",
-    () => TorrClient.stopSearch(searchId!),
-    {
-      onSuccess: () => deleteSearch(),
     }
   );
 
@@ -107,13 +107,32 @@ const PluginSearch = (props: SearchProviderComponentProps) => {
     props.searchState[0],
   ]);
 
+  useEffect(() => {
+    return () => {
+      void cleanupSearch(activeSearchRef.current);
+    };
+    // Only run on unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <VStack>
       <IosSearch
         value={props.searchState[0]}
         onChange={(e) => props.searchState[1](e.target.value)}
         isLoading={createLoading}
-        onSearch={() => createSearch(props.searchState[0])}
+        onSearch={async () => {
+          const query = props.searchState[0]?.trim();
+          if (!query) return;
+
+          if (activeSearchRef.current) {
+            await cleanupSearch(activeSearchRef.current);
+            activeSearchRef.current = undefined;
+            setSearchId(undefined);
+          }
+
+          await createSearch(query);
+        }}
         placeholder={`Search ${props.category}...`}
       />
 
@@ -144,7 +163,11 @@ const PluginSearch = (props: SearchProviderComponentProps) => {
             <Button
               leftIcon={<IoStop />}
               colorScheme={"blue"}
-              onClick={() => stopSearch()}
+              onClick={async () => {
+                await cleanupSearch(activeSearchRef.current);
+                activeSearchRef.current = undefined;
+                setSearchId(undefined);
+              }}
             >
               Stop
             </Button>

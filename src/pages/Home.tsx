@@ -61,7 +61,14 @@ const Home = () => {
       refetchOnWindowFocus: false,
       async onSuccess(data) {
         setRid(data.rid);
-        setRemovedTorrs((curr) => [...curr, ...(data.torrents_removed || [])]);
+        setRemovedTorrs((curr) => {
+          const next = [...curr, ...(data.torrents_removed || [])];
+          const deduped = Array.from(new Set(next));
+          // Keep this bounded to avoid unbounded growth in long-lived sessions.
+          return deduped.length > 5000
+            ? deduped.slice(deduped.length - 5000)
+            : deduped;
+        });
 
         if (data.full_update) {
           // await refetch();
@@ -178,6 +185,8 @@ const Home = () => {
     return indicator;
   }, [filterCategory, filterSearch, filterStatus]);
 
+  const removedTorrsSet = useMemo(() => new Set(removedTorrs), [removedTorrs]);
+
   const Torrents = useMemo(() => {
     if (torrentsTx === undefined) {
       return [];
@@ -185,7 +194,7 @@ const Home = () => {
 
     return Object.entries(torrentsTx)
       ?.sort((a, b) => b[1]?.added_on - a[1]?.added_on)
-      ?.filter(([hash]) => !removedTorrs.includes(hash))
+      ?.filter(([hash]) => !removedTorrsSet.has(hash))
       ?.filter(([hash, torr]) =>
         filterCategory !== "Show All" ? torr.category === filterCategory : true
       )
@@ -193,7 +202,7 @@ const Home = () => {
         filterStatus !== "Show All" ? torr.state === filterStatus : true
       )
       ?.filter(([hash, torr]) => torr.name.includes(filterSearch));
-  }, [torrentsTx, removedTorrs, filterCategory, filterStatus, filterSearch]);
+  }, [torrentsTx, removedTorrsSet, filterCategory, filterStatus, filterSearch]);
 
   const Categories = useMemo(() => {
     return Object.values(categories || {}).map((c) => ({
