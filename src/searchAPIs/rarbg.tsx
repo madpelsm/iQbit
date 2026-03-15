@@ -12,8 +12,57 @@ import { rarbgAPI, RarbgCategoryDictionary } from "../utils/RarBGClient";
 import ReactGA from "react-ga";
 import CategorySelect from "../components/CategorySelect";
 import {SectionSM} from "./yts";
+import { TorrClient } from "../utils/TorrClient";
 
 const RarbgSearch = (props: SearchProviderComponentProps) => {
+  async function wait(ms: number) {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function searchViaQbitPlugins(query: string) {
+    const started = await TorrClient.createSearch(query);
+    const id = started.id;
+
+    try {
+      let response = await TorrClient.getResults(id);
+      let attempts = 0;
+
+      while (response.status === "Running" && attempts < 8) {
+        attempts += 1;
+        await wait(700);
+        response = await TorrClient.getResults(id);
+      }
+
+      return {
+        torrent_results: (response.results || []).map((result) => ({
+          title: result.fileName || "Unknown",
+          category: "plugins",
+          download: result.fileUrl || "",
+          seeders: result.nbSeeders || 0,
+          leechers: result.nbLeechers || 0,
+          size: result.fileSize || 0,
+          pubdate: new Date(),
+          episode_info: {},
+          ranked: 0,
+          info_page: result.descrLink || result.siteUrl || "",
+        })),
+        rate_limit: undefined,
+        error_code: undefined,
+      };
+    } finally {
+      try {
+        await TorrClient.stopSearch(id);
+      } catch {
+        // ignore cleanup failures
+      }
+      try {
+        await TorrClient.deleteSearch(id);
+      } catch {
+        // ignore cleanup failures
+      }
+    }
+  }
+
   const {
     mutate: search,
     reset,
@@ -21,11 +70,24 @@ const RarbgSearch = (props: SearchProviderComponentProps) => {
     isLoading,
   } = useMutation(
     "rarbgSearch",
-    () =>
-      rarbgAPI.search(
-        props.searchState[0],
-        props.category as keyof typeof RarbgCategoryDictionary
-      ),
+    async () => {
+      try {
+        return await rarbgAPI.search(
+          props.searchState[0],
+          props.category as keyof typeof RarbgCategoryDictionary
+        );
+      } catch (error: any) {
+        // iOS/Safari can hit 403 or CORS blocks on external provider endpoint.
+        // Fallback to qBittorrent plugin search so provider still works.
+        if (
+          error?.response?.status === 403 ||
+          error?.code === "ERR_NETWORK"
+        ) {
+          return await searchViaQbitPlugins(props.searchState[0]);
+        }
+        throw error;
+      }
+    },
     {
       onMutate: () =>
         ReactGA.event({
